@@ -2150,9 +2150,14 @@ function initializeGrid() {
     }
 }
 
+        
+
         function placeDoorsAndCorridors() {
             doors = [];
             placedWalls = [];
+
+            // This will allow tracking of which rooms have already had their doors taken care of. This makes it so that a room can not add doors to a room that already set exits and handles the last remaining problem of 2 doors on same wall
+            const seenRoomIds = new Set();
 
             // 1. Dead-End Walls Scan
             for (let y = 0; y < GRID_HEIGHT; y++) {
@@ -2180,13 +2185,85 @@ function initializeGrid() {
                     potentialDoors.push({ x: room.x + room.width - 0.5, y: y, facing: 1, rx: room.x + room.width - 1, ry: y, ox: room.x + room.width, oy: y });
                 }
 
-                const validDoors = potentialDoors.filter(p =>
-                    p.ox >= 0 && p.ox < GRID_WIDTH && p.oy >= 0 && p.oy < GRID_HEIGHT && grid[p.oy][p.ox].active
+                // this is so that a room can track all possible destination rooms and make sure it doesn't set an 2 exits to same room
+                const seenDestinations = new Set();
+                // this is so that it will only add 1 door to the corridor area.
+                const corridorRegionCache = {};
+
+                function getCorridorRegionId(x, y) {
+                    const key = `${x},${y}`;
+                    if (corridorRegionCache[key]) return corridorRegionCache[key];
+
+                    const stack = [{ x, y }];
+                    const visited = new Set();
+                    const tiles = [];
+
+                    while (stack.length) {
+                        const cur = stack.pop();
+                        const k = `${cur.x},${cur.y}`;
+                        if (visited.has(k)) continue;
+                        visited.add(k);
+
+                        const cell = grid[cur.y]?.[cur.x];
+                        if (!cell || cell.type !== 'corridor') continue;
+
+                        tiles.push(k);
+
+                        stack.push({ x: cur.x + 1, y: cur.y });
+                        stack.push({ x: cur.x - 1, y: cur.y });
+                        stack.push({ x: cur.x, y: cur.y + 1 });
+                        stack.push({ x: cur.x, y: cur.y - 1 });
+                    }
+
+                    const id = tiles[0]; // any consistent id works
+
+                    tiles.forEach(t => corridorRegionCache[t] = id);
+
+                    return id;
+                }
+
+                const validDoors = potentialDoors.filter(p => {
+                    if (p.ox < 0 || p.ox >= GRID_WIDTH || p.oy < 0 || p.oy >= GRID_HEIGHT) {
+                        return false;
+                    }
+
+                    const other = grid[p.oy][p.ox];
+                    if (!other.active) {
+                        return false;
+                    }
+
+                    // If the other side is a room that already had its doors generated, skip it
+                    if (other.type === 'room' && seenRoomIds.has(other.roomInstanceId)) {
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                // grouping will help ensure that we only add one door per room/corridor and also adds a bit of randomness to which door gets chosen for each connection
+                const grouped = {};
+                validDoors.forEach(p => {
+                    const other = grid[p.oy][p.ox];
+
+                    let key;
+                    if (other.type === 'room') {
+                        key = `room:${other.roomInstanceId}`;
+                    } else {
+                        key = `corridor:${getCorridorRegionId(p.ox, p.oy)}`;
+                    }
+
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(p);
+                });
+
+                // randomly select one door from each group to ensure we don't have multiple doors leading to the same place and to add some variety
+                const dedupedDoors = Object.values(grouped).map(group =>
+                    group[Math.floor(Math.random() * group.length)]
                 );
 
                 const count = Math.floor(Math.random() * 2) + 1;
-                for (let i = 0; i < count && validDoors.length > 0; i++) {
-                    const d = validDoors.splice(Math.floor(Math.random() * validDoors.length), 1)[0];
+                for (let i = 0; i < count && dedupedDoors.length > 0; i++) {
+                    const d = dedupedDoors.splice(Math.floor(Math.random() * dedupedDoors.length), 1)[0];
                     const isSecret = Math.random() < 0.15;
                     doors.push({ x: d.x, y: d.y, facing: d.facing, room, secret: isSecret, revealed: true });
 
@@ -2194,6 +2271,10 @@ function initializeGrid() {
                     if (grid[d.ry] && grid[d.ry][d.rx]) grid[d.ry][d.rx].occupied = true;
                     if (grid[d.oy] && grid[d.oy][d.ox]) grid[d.oy][d.ox].occupied = true;
                 }
+
+                // Mark this room as having had its doors generated
+                const currentRoomId = grid[room.y][room.x].roomInstanceId;
+                seenRoomIds.add(currentRoomId);
             });
         }
 
