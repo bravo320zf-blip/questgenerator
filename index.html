@@ -30,7 +30,7 @@
             width: 100%;
             height: 100%;
             display: block;
-            opacity: 0.7;
+            opacity: 0;
         }
 
         #gameCanvas {
@@ -185,6 +185,55 @@
         #backgroundImage.hidden {
             display: none;
         }
+
+        /* Generator Filter Modal Styles */
+        .filter-section {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .filter-section-header {
+            background: #f0eaf7;
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #5a2d82;
+            user-select: none;
+        }
+        .filter-section-header:hover { background: #e3d5f5; }
+        .filter-section-arrow { font-size: 11px; }
+        .filter-section-body { padding: 10px 12px; background: #fafafa; }
+        .filter-section-body.collapsed { display: none; }
+        .filter-select-all {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0 8px 0;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .filter-select-all input { width: 16px; height: 16px; cursor: pointer; accent-color: #7b3fa0; }
+        .filter-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .filter-item:hover { background: #eee; }
+        .filter-item input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: #7b3fa0; flex-shrink: 0; }
+        .filter-item img { width: 28px; height: 28px; object-fit: contain; border: 1px solid #ddd; border-radius: 3px; background: white; flex-shrink: 0; }
+        .filter-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .asset-icon {
     width: 50px;
@@ -554,6 +603,7 @@
 
 <div id="controls">
     <button id="generateButton">Generate New Quest</button>
+    <button id="filterButton" onclick="toggleGeneratorFilter()" style="background-color:#7b3fa0;">⚙ Filters</button>
     
     <!-- NEW UNIFIED BUTTON -->
     <button id="unifiedEditBtn" class="mode-btn" onclick="toggleUnifiedEditMode()">Enter Editor Mode</button>
@@ -824,7 +874,7 @@
 </div>
     </div>
 </div>
-    <div id="exportArea" style="background-color: #ffffff; padding: 20px;">
+  <div id="exportArea" style="background-color: #ffffff; padding: 20px;">
         <div id="gameContainer">
             <img id="backgroundImage"
                 src="https://static.wixstatic.com/media/b16479_4b02e58761c94bbbb257856298fbf46e~mv2.png"
@@ -836,7 +886,6 @@
         <div id="questNotes"></div>
     </div>
 
-    <!-- Vault Popup (Redesigned) -->
     <!-- Vault Popup (Redesigned) -->
     <div id="vaultModal" class="vault-modal"
         style="width: 90vw; height: 80vh; max-width: 1400px; display: none; flex-direction: column; padding: 0;">
@@ -1043,6 +1092,76 @@
     </div>
 
     <div id="wanderingMonster"></div>
+
+    <!-- Generator Filter Modal -->
+    <div id="generatorFilterModal" class="vault-modal" style="border-color:#7b3fa0; width:520px; max-height:80vh; display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; color:#7b3fa0;">&#x2699; Generator Filters</h3>
+            <button onclick="toggleGeneratorFilter()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#666;">&times;</button>
+        </div>
+        <p style="font-size:12px; color:#666; margin:0 0 12px 0;">Choose which items can appear in randomly generated quests. Unchecking an item removes it from the generator pool.</p>
+
+        <div class="filter-section">
+            <div class="filter-section-header" onclick="toggleFilterSection('filterMonsters')">
+                <span>&#x1F47E; Monsters</span>
+                <span class="filter-section-arrow" id="arrow-filterMonsters">&#x25BC;</span>
+            </div>
+            <div id="filterMonsters" class="filter-section-body">
+                <label class="filter-select-all">
+                    <input type="checkbox" id="selectAll_monsters" onchange="selectAllFilter('monsters', this.checked)" checked>
+                    <strong>Select All</strong>
+                </label>
+                <div id="filter-monster-list" class="filter-grid"></div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-header" onclick="toggleFilterSection('filterFurniture')">
+                <span>&#x1FA91; Furniture</span>
+                <span class="filter-section-arrow" id="arrow-filterFurniture">&#x25BC;</span>
+            </div>
+            <div id="filterFurniture" class="filter-section-body">
+                <label class="filter-select-all">
+                    <input type="checkbox" id="selectAll_furniture" onchange="selectAllFilter('furniture', this.checked)" checked>
+                    <strong>Select All</strong>
+                </label>
+                <div id="filter-furniture-list" class="filter-grid"></div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-header" onclick="toggleFilterSection('filterTraps')">
+                <span>&#x26A0; Traps</span>
+                <span class="filter-section-arrow" id="arrow-filterTraps">&#x25BC;</span>
+            </div>
+            <div id="filterTraps" class="filter-section-body">
+                <label class="filter-select-all">
+                    <input type="checkbox" id="selectAll_traps" onchange="selectAllFilter('traps', this.checked)" checked>
+                    <strong>Select All</strong>
+                </label>
+                <div id="filter-trap-list" class="filter-grid"></div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-header" onclick="toggleFilterSection('filterDoors')">
+                <span>&#x1F6AA; Doors</span>
+                <span class="filter-section-arrow" id="arrow-filterDoors">&#x25BC;</span>
+            </div>
+            <div id="filterDoors" class="filter-section-body">
+                <label class="filter-select-all">
+                    <input type="checkbox" id="selectAll_doors" onchange="selectAllFilter('doors', this.checked)" checked>
+                    <strong>Select All</strong>
+                </label>
+                <div id="filter-door-list" class="filter-grid"></div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="resetAllFilters()" style="flex:1; background:#888; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold;">Reset to Defaults</button>
+            <button onclick="toggleGeneratorFilter()" style="flex:1; background:#7b3fa0; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold;">Done</button>
+        </div>
+    </div>
     <!-- Auth Modal -->
     <div id="authModal" class="auth-modal">
         <h2 id="authTitle" style="text-align:center; color:#b22222; margin-top:0;">Login</h2>
@@ -1176,8 +1295,8 @@
         const MAX_SECRET_DOORS = 5;
         const MAX_TRAPS = 10;
 
-        let ROOM_COLOR = 'rgba(180, 180, 180, 0.85)';
-        let CORRIDOR_COLOR = 'rgba(255, 255, 255, 0.85)';
+        let ROOM_COLOR = 'rgb(180, 180, 180)';
+        let CORRIDOR_COLOR = 'rgb(255, 255, 255)';
         let INACTIVE_COLOR = 'rgba(60, 60, 60, 0.8)';
         let roomInstanceCounter = 0;
 		let placedTexts = [];
@@ -1190,21 +1309,23 @@
         const ROOM_NUMBER_COLOR = '#000000';
         const ROOM_NUMBER_FONT = '12px Arial';
 
-        // --- ENGINE VARIABLES (Moved to top to prevent "Initialization" error) ---
+        // --- CANVAS & CORE STATE ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
         let isEditMode = false;
+        let isQuestEditMode = false;
         let useCustomLayout = false;
-        let customGrid = Array(GRID_HEIGHT).fill().map(() => Array(GRID_WIDTH).fill(null));
+
         let selectedBrush = { type: 'room', w: 2, h: 2, rot: 0 };
         let mousePos = { x: 0, y: 0 };
-        let isQuestEditMode = false;
-        let draggedItem = null; // Stores object being moved
+        let draggedItem = null;
         let dragOffset = { x: 0, y: 0 };
         let draggedItemType = null;
 
+        // These all get populated/reset each time a quest is generated
         let grid = [];
+        let customGrid = Array(GRID_HEIGHT).fill().map(() => Array(GRID_WIDTH).fill(null));
         let currentQuest = null;
         let activeRooms = [];
         let doors = [];
@@ -1216,7 +1337,7 @@
         let placedTraps = [];
         let imageCache = {};
 
-        // Play Mode State
+        // Play Mode
         let playMode = false;
         let players = [];
         let selectedPlayer = null;
@@ -1226,7 +1347,7 @@
         const PLAYER_COLORS = ['red', 'green', 'blue', 'brown'];
         const PLAYER_SIZE = SPACE_WIDTH * 0.8;
 
-        // --- DATA ARRAYS ---
+        // --- IMAGE URLS ---
 
         const FURNITURE_IMAGES = {
             'Weapons Rack': 'https://static.wixstatic.com/media/b16479_891468c08b674ab3afee4e03d5e5a999~mv2.png',
@@ -1318,6 +1439,168 @@
             { name: 'SecretDoor', size: { width: 1, height: 2 }, imageUrl: DOOR_IMAGES['SecretDoor'], hasFront: true }
         ];
 
+        // =====================================================================
+        // GENERATOR FILTER STATE
+        // =====================================================================
+        // Default: all items enabled. Keys match item names.
+        const generatorFilter = {
+            monsters: {},   // name -> true/false
+            furniture: {},  // name -> true/false
+            traps: {},      // name -> true/false
+            doors: {}       // name -> true/false
+        };
+
+        // Initialize all to true (enabled)
+        function initGeneratorFilter() {
+            monsterTypes.forEach(m => { generatorFilter.monsters[m.name] = true; });
+            furnitureTypes.forEach(f => { generatorFilter.furniture[f.name] = true; });
+            trapTypes.forEach(t => { generatorFilter.traps[t.name] = true; });
+            // Also include expansion traps
+            Object.keys(TRAP_IMAGES).forEach(name => { generatorFilter.traps[name] = true; });
+            doorTypes.forEach(d => { generatorFilter.doors[d.name] = true; });
+        }
+
+        // Helper: get all enabled items of a category
+        function getEnabledMonsters() {
+            return monsterTypes.filter(m => generatorFilter.monsters[m.name] !== false);
+        }
+        function getEnabledFurniture() {
+            return furnitureTypes.filter(f => generatorFilter.furniture[f.name] !== false);
+        }
+        function getEnabledTraps() {
+            // Full trap list (including expansion traps from TRAP_IMAGES)
+            const allTraps = Object.keys(TRAP_IMAGES).map(name => ({ name, imageUrl: TRAP_IMAGES[name] }));
+            return allTraps.filter(t => generatorFilter.traps[t.name] !== false);
+        }
+        function isDoorsEnabled() {
+            return generatorFilter.doors['Door1x1'] !== false;
+        }
+        function isSecretDoorsEnabled() {
+            return generatorFilter.doors['SecretDoor'] !== false;
+        }
+
+        // =====================================================================
+        // FILTER UI LOGIC
+        // =====================================================================
+        function toggleGeneratorFilter() {
+            const modal = document.getElementById('generatorFilterModal');
+            const overlay = document.getElementById('overlay');
+            const isVisible = modal.style.display === 'block';
+            if (isVisible) {
+                modal.style.display = 'none';
+                overlay.style.display = 'none';
+            } else {
+                populateFilterModal();
+                modal.style.display = 'block';
+                overlay.style.display = 'block';
+            }
+        }
+
+        function populateFilterModal() {
+            // --- MONSTERS ---
+            const mList = document.getElementById('filter-monster-list');
+            mList.innerHTML = '';
+            monsterTypes.forEach(m => {
+                const checked = generatorFilter.monsters[m.name] !== false;
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                label.innerHTML = `
+                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="setFilterItem('monsters','${m.name}',this.checked); syncSelectAll('monsters');">
+                    <img src="${m.imageUrl}" title="${m.name}">
+                    <span>${m.name}</span>`;
+                mList.appendChild(label);
+            });
+            syncSelectAll('monsters');
+
+            // --- FURNITURE ---
+            const fList = document.getElementById('filter-furniture-list');
+            fList.innerHTML = '';
+            furnitureTypes.forEach(f => {
+                const checked = generatorFilter.furniture[f.name] !== false;
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                label.innerHTML = `
+                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="setFilterItem('furniture','${f.name}',this.checked); syncSelectAll('furniture');">
+                    <img src="${f.imageUrl}" title="${f.name}">
+                    <span>${f.name}</span>`;
+                fList.appendChild(label);
+            });
+            syncSelectAll('furniture');
+
+            // --- TRAPS (all from TRAP_IMAGES) ---
+            const tList = document.getElementById('filter-trap-list');
+            tList.innerHTML = '';
+            Object.entries(TRAP_IMAGES).forEach(([name, url]) => {
+                const checked = generatorFilter.traps[name] !== false;
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                label.innerHTML = `
+                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="setFilterItem('traps','${name}',this.checked); syncSelectAll('traps');">
+                    <img src="${url}" title="${name}">
+                    <span>${name}</span>`;
+                tList.appendChild(label);
+            });
+            syncSelectAll('traps');
+
+            // --- DOORS ---
+            const dList = document.getElementById('filter-door-list');
+            dList.innerHTML = '';
+            [
+                { name: 'Door1x1', label: 'Standard Door', url: DOOR_IMAGES['Door1x1'] },
+                { name: 'SecretDoor', label: 'Secret Door', url: DOOR_IMAGES['SecretDoor'] }
+            ].forEach(d => {
+                const checked = generatorFilter.doors[d.name] !== false;
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                label.innerHTML = `
+                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="setFilterItem('doors','${d.name}',this.checked); syncSelectAll('doors');">
+                    <img src="${d.url}" title="${d.label}">
+                    <span>${d.label}</span>`;
+                dList.appendChild(label);
+            });
+            syncSelectAll('doors');
+        }
+
+        function setFilterItem(category, name, value) {
+            generatorFilter[category][name] = value;
+        }
+
+        function selectAllFilter(category, checked) {
+            generatorFilter[category] = {};
+            // Set all items
+            if (category === 'monsters') monsterTypes.forEach(m => { generatorFilter.monsters[m.name] = checked; });
+            else if (category === 'furniture') furnitureTypes.forEach(f => { generatorFilter.furniture[f.name] = checked; });
+            else if (category === 'traps') Object.keys(TRAP_IMAGES).forEach(n => { generatorFilter.traps[n] = checked; });
+            else if (category === 'doors') doorTypes.forEach(d => { generatorFilter.doors[d.name] = checked; });
+            // Re-render checkboxes
+            populateFilterModal();
+        }
+
+        function syncSelectAll(category) {
+            let allChecked = true;
+            let items = [];
+            if (category === 'monsters') items = monsterTypes.map(m => m.name);
+            else if (category === 'furniture') items = furnitureTypes.map(f => f.name);
+            else if (category === 'traps') items = Object.keys(TRAP_IMAGES);
+            else if (category === 'doors') items = doorTypes.map(d => d.name);
+            items.forEach(name => { if (generatorFilter[category][name] === false) allChecked = false; });
+            const cb = document.getElementById('selectAll_' + category);
+            if (cb) cb.checked = allChecked;
+        }
+
+        function toggleFilterSection(id) {
+            const body = document.getElementById(id);
+            const arrow = document.getElementById('arrow-' + id);
+            if (!body) return;
+            const collapsed = body.classList.toggle('collapsed');
+            if (arrow) arrow.style.transform = collapsed ? 'rotate(-90deg)' : '';
+        }
+
+        function resetAllFilters() {
+            initGeneratorFilter();
+            populateFilterModal();
+        }
+
         const SPACE_MAPPING = [
             { number: 1, type: 'A' }, { number: 2, type: 'A' }, { number: 3, type: 'A' }, { number: 4, type: 'A' }, { number: 5, type: 'A' }, { number: 6, type: 'A' }, { number: 7, type: 'A' }, { number: 8, type: 'A' }, { number: 9, type: 'A' }, { number: 10, type: 'A' }, { number: 11, type: 'A' }, { number: 12, type: 'A' }, { number: 13, type: 'A' }, { number: 14, type: 'A' }, { number: 15, type: 'A' }, { number: 16, type: 'A' }, { number: 17, type: 'A' }, { number: 18, type: 'A' }, { number: 19, type: 'A' }, { number: 20, type: 'A' }, { number: 21, type: 'A' }, { number: 22, type: 'A' }, { number: 23, type: 'A' }, { number: 24, type: 'A' }, { number: 25, type: 'A' }, { number: 26, type: 'A' },
             { number: 27, type: 'A' }, { number: 28, type: 'B' }, { number: 29, type: 'B' }, { number: 30, type: 'B' }, { number: 31, type: 'B' }, { number: 32, type: 'B' }, { number: 33, type: 'B' }, { number: 34, type: 'B' }, { number: 35, type: 'B' }, { number: 36, type: 'B' }, { number: 37, type: 'B' }, { number: 38, type: 'B' }, { number: 39, type: 'A' }, { number: 40, type: 'A' }, { number: 41, type: 'B' }, { number: 42, type: 'B' }, { number: 43, type: 'B' }, { number: 44, type: 'B' }, { number: 45, type: 'B' }, { number: 46, type: 'B' }, { number: 47, type: 'B' }, { number: 48, type: 'B' }, { number: 49, type: 'B' }, { number: 50, type: 'B' }, { number: 51, type: 'B' }, { number: 52, type: 'A' },
@@ -1365,9 +1648,24 @@
             { roomNumber: 22, spaces: [386, 387, 388, 389, 412, 413, 414, 415, 438, 439, 440, 441, 464, 465, 466, 467] }
         ];
 
+        // Monsters that only come with one miniature in the box.
+        // The generator will never place more than one of these per quest.
+        const UNIQUE_MONSTERS = new Set([
+            'Frozen Horror',
+            'Dragon',
+            'Serpent',
+            'Giant Ape',
+            'Blight Crawler',
+            'Ogre Lord',
+            'Ogre Champion',
+            'Ogre Chieftan',
+            'Venim',
+            'Goblin Warlock'
+        ]);
+
         const monsterTypes = [
             // --- STANDARD MONSTERS (1x1) ---
-            { name: 'Goblin', size: { width: 1, height: 1 }, imageUrl: MONSTER_IMAGES['Goblin'] },
+            { name: 'Goblin', size: { width: 1.2, height: 1 }, imageUrl: MONSTER_IMAGES['Goblin'] },
             { name: 'Orc', size: { width: 1, height: 1 }, imageUrl: MONSTER_IMAGES['Orc'] },
             { name: 'Skeleton', size: { width: 1, height: 1 }, imageUrl: MONSTER_IMAGES['Skeleton'] },
             { name: 'Zombie', size: { width: 1, height: 1 }, imageUrl: MONSTER_IMAGES['Zombie'] },
@@ -1391,7 +1689,7 @@
             { name: 'Ogre Chieftan', size: { width: 2, height: 1 }, imageUrl: MONSTER_IMAGES['Ogre Chieftan'] },
             { name: 'Ogre Champion', size: { width: 2, height: 1 }, imageUrl: MONSTER_IMAGES['Ogre Champion'] },
             { name: 'Ogre Warrior', size: { width: 1, height: 1 }, imageUrl: MONSTER_IMAGES['Ogre Warrior'] },
-            { name: 'Polar Warbear', size: { width: 2, height: 1 }, imageUrl: MONSTER_IMAGES['Polar Warbear'] },
+            { name: 'Polar Warbear', size: { width: 1, height: 1 }, imageUrl: MONSTER_IMAGES['Polar Warbear'] },
             { name: 'Yeti', size: { width: 2, height: 1 }, imageUrl: MONSTER_IMAGES['Yeti'] },
             { name: 'Serpent', size: { width: 2, height: 1 }, imageUrl: MONSTER_IMAGES['Serpent'] },
             { name: 'Blight Crawler', size: { width: 2, height: 1 }, imageUrl: MONSTER_IMAGES['Blight Crawler'] },
@@ -2264,7 +2562,11 @@ function initializeGrid() {
                 const count = Math.floor(Math.random() * 2) + 1;
                 for (let i = 0; i < count && dedupedDoors.length > 0; i++) {
                     const d = dedupedDoors.splice(Math.floor(Math.random() * dedupedDoors.length), 1)[0];
-                    const isSecret = Math.random() < 0.15;
+                    // Respect door filter: only use secret doors if enabled
+                    const canBeSecret = isSecretDoorsEnabled();
+                    const isSecret = canBeSecret && (Math.random() < 0.15);
+                    // If standard doors are disabled, skip this door entirely
+                    if (!isDoorsEnabled() && !isSecret) continue;
                     doors.push({ x: d.x, y: d.y, facing: d.facing, room, secret: isSecret, revealed: true });
 
                     // Mark entry and exit tiles as occupied
@@ -2479,7 +2781,7 @@ function clearMap() {
             const bgImg = document.getElementById('backgroundImage');
             if (bgImg.style.visibility === 'hidden') {
                 bgImg.style.visibility = 'visible';
-                bgImg.style.opacity = '0.7'; // Matches the new CSS brightness
+                bgImg.style.opacity = '0'; // Matches the new CSS brightness
             } else {
                 bgImg.style.visibility = 'hidden';
             }
@@ -2644,7 +2946,10 @@ canvas.addEventListener('mousedown', (e) => {
         }
 
         // 3. Click on Standard Assets (Move / Delete)
-        const monsterIdx = placedMonsters.findIndex(m => m.x === gx && m.y === gy);
+        const monsterIdx = placedMonsters.findIndex(m => {
+            const fp = getItemFootprint(m);
+            return gx >= m.x && gx < m.x + fp.w && gy >= m.y && gy < m.y + fp.h;
+        });
         const furnitureIdx = placedFurniture.findIndex(f => {
             const fp = getItemFootprint(f);
             return gx >= f.x && gx < f.x + fp.w && gy >= f.y && gy < f.y + fp.h;
@@ -2921,11 +3226,13 @@ function drawEditor() {
 
     // Traps
     placedTraps.forEach(t => {
-        const trapData = trapTypes.find(tt => tt.name === t.type);
-        if (trapData && imageCache[trapData.imageUrl]) {
+        const trapName = (typeof t.type === 'string') ? t.type : t.type.name;
+        const trapData = trapTypes.find(tt => tt.name === trapName);
+        const trapImgUrl = trapData ? trapData.imageUrl : TRAP_IMAGES[trapName];
+        if (trapImgUrl && imageCache[trapImgUrl]) {
             ctx.save();
             if (draggedItem === t) { ctx.shadowBlur = 15; ctx.shadowColor = "cyan"; }
-            ctx.drawImage(imageCache[trapData.imageUrl], t.x * SPACE_WIDTH, t.y * SPACE_HEIGHT, SPACE_WIDTH, SPACE_HEIGHT);
+            ctx.drawImage(imageCache[trapImgUrl], t.x * SPACE_WIDTH, t.y * SPACE_HEIGHT, SPACE_WIDTH, SPACE_HEIGHT);
             ctx.restore();
         }
     });
@@ -2938,17 +3245,18 @@ function drawEditor() {
             ctx.save();
             const fp = getItemFootprint(m);
             ctx.translate((m.x + fp.w / 2) * SPACE_WIDTH, (m.y + fp.h / 2) * SPACE_HEIGHT);
-            ctx.rotate((m.facing * 90) * Math.PI / 180);
+            ctx.rotate(((m.facing || 0) * 90) * Math.PI / 180);
             if (draggedItem === m) { ctx.shadowBlur = 15; ctx.shadowColor = "cyan"; }
 
-            const displayWidth = (m.type.size.width === 1 && m.type.size.height === 1) ? 1 : m.type.size.width;
-            const displayHeight = (m.type.size.width === 1 && m.type.size.height === 1) ? 1 : m.type.size.height;
+            // Always draw using base size (before rotation), centered on footprint center
+            const baseW = m.type.size.width;
+            const baseH = m.type.size.height;
 
             ctx.drawImage(img,
-                -(displayWidth * SPACE_WIDTH) / 2,
-                -(displayHeight * SPACE_HEIGHT) / 2,
-                SPACE_WIDTH * displayWidth,
-                SPACE_HEIGHT * displayHeight);
+                -(baseW * SPACE_WIDTH) / 2,
+                -(baseH * SPACE_HEIGHT) / 2,
+                SPACE_WIDTH * baseW,
+                SPACE_HEIGHT * baseH);
             ctx.restore();
         }
     });
@@ -3503,12 +3811,19 @@ function setActiveRooms(rooms) {
 
         function placeFurniture() {
             placedFurniture = [];
+            const enabledFurniture = getEnabledFurniture();
+
             activeRooms.forEach(room => {
                 const questRoom = currentQuest.rooms.find(qr => qr.letter === room.letter);
                 if (!questRoom) return;
 
                 questRoom.furniture.forEach(f => {
-                    const type = furnitureTypes.find(ft => ft.name === f.type);
+                    // Use quest-specified type if enabled, otherwise substitute with a random enabled one
+                    let type = enabledFurniture.find(ft => ft.name === f.type);
+                    if (!type) {
+                        if (enabledFurniture.length === 0) return; // nothing to place
+                        type = enabledFurniture[Math.floor(Math.random() * enabledFurniture.length)];
+                    }
                     let placed = false;
                     let attempts = 0;
 
@@ -4080,7 +4395,10 @@ canvas.addEventListener('mousemove', (e) => {
 
             // --- MODE 2: QUEST EDITOR (Dragging/Deleting monsters/furniture) ---
             if (isQuestEditMode) {
-                const monsterIdx = placedMonsters.findIndex(m => m.x === gx && m.y === gy);
+                const monsterIdx = placedMonsters.findIndex(m => {
+                    const fp = getItemFootprint(m);
+                    return gx >= m.x && gx < m.x + fp.w && gy >= m.y && gy < m.y + fp.h;
+                });
                 const furnitureIdx = placedFurniture.findIndex(f => {
                     const fp = getItemFootprint(f);
                     return gx >= f.x && gx < f.x + fp.w && gy >= f.y && gy < f.y + fp.h;
@@ -4283,20 +4601,78 @@ canvas.addEventListener('mouseup', () => {
 
         function placeMonsters() {
             placedMonsters = [];
+
+            const enabledMonsters = getEnabledMonsters();
+            if (enabledMonsters.length === 0) return;
+
+            // Standard base-game monsters used as safe substitutes
+            const baseMonsters = ['Goblin', 'Orc', 'Skeleton', 'Zombie', 'Mummy', 'Chaos Warrior', 'Fimir', 'Gargoyle'];
+            const expansionPool = enabledMonsters.filter(mt => !baseMonsters.includes(mt.name));
+
+            // Track which unique-only monsters have already been placed this quest
+            // so we don't accidentally put two Frozen Horrors or two Dragons on the board
+            const usedUniques = new Set();
+
             activeRooms.forEach(room => {
                 const questRoom = currentQuest.rooms.find(qr => qr.letter === room.letter);
                 if (!questRoom) return;
+
                 questRoom.monsters.forEach(m => {
-                    const type = monsterTypes.find(mt => mt.name === m.type);
+                    // Start with what the quest asks for, fall back to a random enabled pick
+                    let type = enabledMonsters.find(mt => mt.name === m.type);
+                    if (!type) {
+                        type = enabledMonsters[Math.floor(Math.random() * enabledMonsters.length)];
+                    }
+
+                    // 30% chance to swap in an expansion monster for variety
+                    if (expansionPool.length > 0 && Math.random() < 0.30) {
+                        type = expansionPool[Math.floor(Math.random() * expansionPool.length)];
+                    }
+
+                    // If we landed on a unique monster that's already been placed,
+                    // swap it out for a random non-unique monster instead
+                    if (UNIQUE_MONSTERS.has(type.name) && usedUniques.has(type.name)) {
+                        const safePool = enabledMonsters.filter(mt => !UNIQUE_MONSTERS.has(mt.name));
+                        if (safePool.length > 0) {
+                            type = safePool[Math.floor(Math.random() * safePool.length)];
+                        }
+                    }
+
+                    // Mark this unique as used so it won't appear again
+                    if (UNIQUE_MONSTERS.has(type.name)) {
+                        usedUniques.add(type.name);
+                    }
+
+                    // Place the actual tokens on the board
                     for (let i = 0; i < m.count; i++) {
+                        // For unique monsters, never place more than one even if count > 1
+                        if (i > 0 && UNIQUE_MONSTERS.has(type.name)) break;
+
                         let attempts = 0;
                         while (attempts < 30) {
                             const space = room.spaces[Math.floor(Math.random() * room.spaces.length)];
-                            // Check if the tile is free of other monsters AND door paths
-                            if (!grid[space.y][space.x].occupied) {
-                                placedMonsters.push({ type: type, x: space.x, y: space.y, room: room });
+                            if (grid[space.y][space.x].occupied) { attempts++; continue; }
+
+                            const mSize = type.size || { width: 1, height: 1 };
+
+                            if (mSize.width === 1 && mSize.height === 1) {
+                                // Standard 1x1 monster, easy
+                                placedMonsters.push({ type, x: space.x, y: space.y, room, facing: 0 });
                                 grid[space.y][space.x].occupied = true;
                                 break;
+                            } else {
+                                // Larger footprint — check the whole area first
+                                if (canPlaceItem(space.x, space.y, mSize.width, mSize.height, room)) {
+                                    placedMonsters.push({ type, x: space.x, y: space.y, room, facing: 0 });
+                                    for (let dy = 0; dy < mSize.height; dy++) {
+                                        for (let dx = 0; dx < mSize.width; dx++) {
+                                            if (grid[space.y + dy] && grid[space.y + dy][space.x + dx]) {
+                                                grid[space.y + dy][space.x + dx].occupied = true;
+                                            }
+                                        }
+                                    }
+                                    break;
+                                }
                             }
                             attempts++;
                         }
@@ -4307,16 +4683,24 @@ canvas.addEventListener('mouseup', () => {
 
         function placeTraps() {
             placedTraps = [];
+            const enabledTraps = getEnabledTraps();
+            if (enabledTraps.length === 0) return;
+
             activeRooms.forEach(room => {
                 const questRoom = currentQuest.rooms.find(qr => qr.letter === room.letter);
                 if (!questRoom || !questRoom.traps) return;
                 questRoom.traps.forEach(t => {
+                    // Use quest-specified trap if enabled, else substitute with random enabled trap
+                    let trapName = t.type;
+                    if (enabledTraps.findIndex(et => et.name === trapName) === -1) {
+                        trapName = enabledTraps[Math.floor(Math.random() * enabledTraps.length)].name;
+                    }
                     for (let i = 0; i < (t.count || 1); i++) {
                         const availableSpaces = room.spaces.filter(s => !grid[s.y][s.x].occupied);
                         if (availableSpaces.length > 0) {
                             const space = availableSpaces[Math.floor(Math.random() * availableSpaces.length)];
-                            placedTraps.push({ type: t.type, x: space.x, y: space.y, room: room });
-                            grid[space.y][space.x].occupied = true; // Lock tile for traps too
+                            placedTraps.push({ type: trapName, x: space.x, y: space.y, room: room });
+                            grid[space.y][space.x].occupied = true;
                         }
                     }
                 });
@@ -4889,14 +5273,14 @@ function drawBoard(targetCtx = null, overrideData = null) {
     _manualWalls.forEach(w => w.wallData && drawItem(w, w.wallData.imageUrl, w.wallData.size.width, w.wallData.size.height, w.facing%2!==0));
     _placedFurniture.forEach(f => f.furniture && drawItem(f, f.furniture.imageUrl, f.furniture.size.width, f.furniture.size.height, f.facing%2!==0));
     _placedTraps.forEach(t => {
-        const type = trapTypes.find(x => x.name === t.type);
-        if(type) drawItem(t, type.imageUrl, 1, 1, false);
+        const trapName = (typeof t.type === 'string') ? t.type : t.type.name;
+        const type = trapTypes.find(x => x.name === trapName);
+        const imgUrl = type ? type.imageUrl : TRAP_IMAGES[trapName];
+        if(imgUrl) drawItem(t, imgUrl, 1, 1, false);
     });
     _placedMonsters.forEach(m => {
         if(m.type) {
-             const w = (m.type.size.width === 1 && m.type.size.height === 1) ? 1 : m.type.size.width;
-             const h = (m.type.size.width === 1 && m.type.size.height === 1) ? 1 : m.type.size.height;
-             drawItem(m, m.type.imageUrl, w, h, m.facing%2!==0);
+             drawItem(m, m.type.imageUrl, m.type.size.width, m.type.size.height, m.facing%2!==0);
         }
     });
     _doors.forEach(d => {
@@ -6154,6 +6538,7 @@ function loadQuestData(data) {
                 document.getElementById('backgroundImage').style.visibility = 'visible';
             }
             initHelpSystem(); // Initialize Help Content
+            initGeneratorFilter(); // Initialize generator filters
             preloadImages().then(() => {
                 console.log("Images preloaded (or timed out)");
                 if (!isGameInitialized) {
