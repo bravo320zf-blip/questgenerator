@@ -3175,6 +3175,61 @@ function drawEditor() {
         }
     }
 
+	// 3.5 DRAW ROOM BOUNDARY WALLS (Matching Quest Viewer style)
+    ctx.save();
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "square";
+
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+        for (let x = 0; x < GRID_WIDTH; x++) {
+            const current = customGrid[y][x];
+            if (!current) continue;
+
+            const px = x * SPACE_WIDTH;
+            const py = y * SPACE_HEIGHT;
+
+            const edges = [
+                { dir: 'N', nx: x, ny: y - 1, x1: px, y1: py, x2: px + SPACE_WIDTH, y2: py },
+                { dir: 'S', nx: x, ny: y + 1, x1: px, y1: py + SPACE_HEIGHT, x2: px + SPACE_WIDTH, y2: py + SPACE_HEIGHT },
+                { dir: 'W', nx: x - 1, ny: y, x1: px, y1: py, x2: px, y2: py + SPACE_HEIGHT },
+                { dir: 'E', nx: x + 1, ny: y, x1: px + SPACE_WIDTH, y1: py, x2: px + SPACE_WIDTH, y2: py + SPACE_HEIGHT }
+            ];
+
+            edges.forEach(edge => {
+                let needsWall = false;
+
+                if (edge.nx < 0 || edge.nx >= GRID_WIDTH || edge.ny < 0 || edge.ny >= GRID_HEIGHT) {
+                    needsWall = true;
+                } else {
+                    const neighbor = customGrid[edge.ny][edge.nx];
+                    if (!neighbor) {
+                        needsWall = true;
+                    } else if (current.type === 'room' && neighbor.type === 'room' && current.id !== neighbor.id) {
+                        needsWall = true;
+                    } else if (current.type !== neighbor.type) {
+                        needsWall = true;
+                    }
+                }
+
+                if (needsWall) {
+                    let sx1 = edge.x1, sy1 = edge.y1, sx2 = edge.x2, sy2 = edge.y2;
+                    const offset = 2.5;
+                    if (edge.dir === 'N' && y === 0) { sy1 += offset; sy2 += offset; }
+                    if (edge.dir === 'S' && y === GRID_HEIGHT - 1) { sy1 -= offset; sy2 -= offset; }
+                    if (edge.dir === 'W' && x === 0) { sx1 += offset; sx2 += offset; }
+                    if (edge.dir === 'E' && x === GRID_WIDTH - 1) { sx1 -= offset; sx2 -= offset; }
+
+                    ctx.beginPath();
+                    ctx.moveTo(sx1, sy1);
+                    ctx.lineTo(sx2, sy2);
+                    ctx.stroke();
+                }
+            });
+        }
+    }
+    ctx.restore();
+
     // 4. DRAW ASSETS (Layered on top of tiles)
     // We reuse the drawing logic from drawBoard here to ensure visibility during editing
 
