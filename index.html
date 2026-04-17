@@ -611,7 +611,6 @@
     <!-- Toggle Button for Labels -->
     <input type="checkbox" id="showRoomNumbers" checked style="display:none;" onchange="drawBoard()">
     <button id="roomLabelToggleBtn" class="toggle-btn" onclick="toggleRoomLabels()">Show Room Labels</button>
-    <button id="layoutToggleBtn" onclick="toggleLayoutSource()">Switch to Custom Layout</button>
 
     <!-- Hamburger Menu (Kept as is) -->
     <div class="hamburger-menu">
@@ -3132,210 +3131,31 @@ canvas.addEventListener('mousedown', (e) => {
 function drawEditor() {
     if (!ctx) return;
 
-    // 1. Clear the canvas
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // 2. Draw Background (Dark or Tracing Mode)
-    const bgImg = document.getElementById('backgroundImage');
-    const isTracing = bgImg && bgImg.style.visibility === 'visible';
-
-    if (!isTracing) {
-        ctx.fillStyle = "#111"; // Dark background for Editor
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    } else {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.2)"; // Semi-transparent for tracing
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    }
-
-    // 3. Draw Placed Tiles (From Custom Grid)
+    // Sync customGrid → live grid so drawBoard renders correctly
     for (let y = 0; y < GRID_HEIGHT; y++) {
         for (let x = 0; x < GRID_WIDTH; x++) {
-            const px = x * SPACE_WIDTH;
-            const py = y * SPACE_HEIGHT;
-
-            // Draw painted tiles from the customGrid
-            if (customGrid[y][x]) {
-                if (customGrid[y][x].type === 'room') {
-                    ctx.fillStyle = "rgba(178, 34, 34, 0.7)"; // Crimson Red
-                } else {
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; // White
-                }
-                ctx.fillRect(px, py, SPACE_WIDTH, SPACE_HEIGHT);
-
-                // Draw subtle border
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(px, py, SPACE_WIDTH, SPACE_HEIGHT);
-            } else {
-                // Draw empty grid lines
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-                ctx.lineWidth = 0.5;
-                ctx.strokeRect(px, py, SPACE_WIDTH, SPACE_HEIGHT);
-            }
+            const source = customGrid[y][x];
+            grid[y][x].active = !!source;
+            grid[y][x].type = source ? source.type : 'empty';
+            grid[y][x].roomInstanceId = source ? source.id : null;
         }
     }
 
-	// 3.5 DRAW ROOM BOUNDARY WALLS (Matching Quest Viewer style)
-    ctx.save();
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "square";
+    // Draw exactly like normal board view
+    drawBoard();
 
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-        for (let x = 0; x < GRID_WIDTH; x++) {
-            const current = customGrid[y][x];
-            if (!current) continue;
-
-            const px = x * SPACE_WIDTH;
-            const py = y * SPACE_HEIGHT;
-
-            const edges = [
-                { dir: 'N', nx: x, ny: y - 1, x1: px, y1: py, x2: px + SPACE_WIDTH, y2: py },
-                { dir: 'S', nx: x, ny: y + 1, x1: px, y1: py + SPACE_HEIGHT, x2: px + SPACE_WIDTH, y2: py + SPACE_HEIGHT },
-                { dir: 'W', nx: x - 1, ny: y, x1: px, y1: py, x2: px, y2: py + SPACE_HEIGHT },
-                { dir: 'E', nx: x + 1, ny: y, x1: px + SPACE_WIDTH, y1: py, x2: px + SPACE_WIDTH, y2: py + SPACE_HEIGHT }
-            ];
-
-            edges.forEach(edge => {
-                let needsWall = false;
-
-                if (edge.nx < 0 || edge.nx >= GRID_WIDTH || edge.ny < 0 || edge.ny >= GRID_HEIGHT) {
-                    needsWall = true;
-                } else {
-                    const neighbor = customGrid[edge.ny][edge.nx];
-                    if (!neighbor) {
-                        needsWall = true;
-                    } else if (current.type === 'room' && neighbor.type === 'room' && current.id !== neighbor.id) {
-                        needsWall = true;
-                    } else if (current.type !== neighbor.type) {
-                        needsWall = true;
-                    }
-                }
-
-                if (needsWall) {
-                    let sx1 = edge.x1, sy1 = edge.y1, sx2 = edge.x2, sy2 = edge.y2;
-                    const offset = 2.5;
-                    if (edge.dir === 'N' && y === 0) { sy1 += offset; sy2 += offset; }
-                    if (edge.dir === 'S' && y === GRID_HEIGHT - 1) { sy1 -= offset; sy2 -= offset; }
-                    if (edge.dir === 'W' && x === 0) { sx1 += offset; sx2 += offset; }
-                    if (edge.dir === 'E' && x === GRID_WIDTH - 1) { sx1 -= offset; sx2 -= offset; }
-
-                    ctx.beginPath();
-                    ctx.moveTo(sx1, sy1);
-                    ctx.lineTo(sx2, sy2);
-                    ctx.stroke();
-                }
-            });
-        }
-    }
-    ctx.restore();
-
-    // 4. DRAW ASSETS (Layered on top of tiles)
-    // We reuse the drawing logic from drawBoard here to ensure visibility during editing
-
-    // Manual Walls
-    manualWalls.forEach(w => {
-        if (!w.wallData) return;
-        const img = imageCache[w.wallData.imageUrl];
-        if (img) {
-            ctx.save();
-            const fp = getItemFootprint(w);
-            ctx.translate((w.x + fp.w / 2) * SPACE_WIDTH, (w.y + fp.h / 2) * SPACE_HEIGHT);
-            ctx.rotate((w.facing * 90) * Math.PI / 180);
-            if (draggedItem === w) { ctx.shadowBlur = 20; ctx.shadowColor = "cyan"; }
-            ctx.drawImage(img, -(w.wallData.size.width * SPACE_WIDTH) / 2, -(w.wallData.size.height * SPACE_HEIGHT) / 2, SPACE_WIDTH * w.wallData.size.width, SPACE_HEIGHT * w.wallData.size.height);
-            ctx.restore();
-        }
-    });
-
-    // Doors
-    doors.forEach(d => {
-        const isSecret = d.secret;
-        const doorImg = isSecret ? imageCache[DOOR_IMAGES['SecretDoor']] : imageCache[DOOR_IMAGES['Door1x1']];
-        if (doorImg) {
-            const dw = isSecret ? SPACE_WIDTH : DOOR_IMAGE_WIDTH;
-            const dh = isSecret ? SPACE_HEIGHT * 2 : DOOR_IMAGE_HEIGHT;
-            ctx.save();
-            ctx.translate((d.x + 0.5) * SPACE_WIDTH, (d.y + 0.5) * SPACE_HEIGHT);
-            ctx.rotate((d.facing * 90) * Math.PI / 180);
-            if (draggedItem === d) { ctx.shadowBlur = 15; ctx.shadowColor = "cyan"; }
-            ctx.drawImage(doorImg, -dw / 2, -dh / 2, dw, dh);
-            ctx.restore();
-        }
-    });
-
-    // Furniture
-    placedFurniture.forEach(f => {
-        if (!f.furniture) return;
-        const img = imageCache[f.furniture.imageUrl];
-        if (img) {
-            ctx.save();
-            const fp = getItemFootprint(f);
-            ctx.translate((f.x + fp.w / 2) * SPACE_WIDTH, (f.y + fp.h / 2) * SPACE_HEIGHT);
-            ctx.rotate((f.facing * 90) * Math.PI / 180);
-            if (draggedItem === f) { ctx.shadowBlur = 20; ctx.shadowColor = "cyan"; }
-            ctx.drawImage(img, -(f.furniture.size.width * SPACE_WIDTH) / 2, -(f.furniture.size.height * SPACE_HEIGHT) / 2, SPACE_WIDTH * f.furniture.size.width, SPACE_HEIGHT * f.furniture.size.height);
-            ctx.restore();
-        }
-    });
-
-    // Traps
-    placedTraps.forEach(t => {
-        const trapName = (typeof t.type === 'string') ? t.type : t.type.name;
-        const trapData = trapTypes.find(tt => tt.name === trapName);
-        const trapImgUrl = trapData ? trapData.imageUrl : TRAP_IMAGES[trapName];
-        if (trapImgUrl && imageCache[trapImgUrl]) {
-            ctx.save();
-            if (draggedItem === t) { ctx.shadowBlur = 15; ctx.shadowColor = "cyan"; }
-            ctx.drawImage(imageCache[trapImgUrl], t.x * SPACE_WIDTH, t.y * SPACE_HEIGHT, SPACE_WIDTH, SPACE_HEIGHT);
-            ctx.restore();
-        }
-    });
-
-    // Monsters
-    placedMonsters.forEach(m => {
-        if (!m.type) return;
-        const img = imageCache[m.type.imageUrl];
-        if (img) {
-            ctx.save();
-            const fp = getItemFootprint(m);
-            ctx.translate((m.x + fp.w / 2) * SPACE_WIDTH, (m.y + fp.h / 2) * SPACE_HEIGHT);
-            ctx.rotate(((m.facing || 0) * 90) * Math.PI / 180);
-            if (draggedItem === m) { ctx.shadowBlur = 15; ctx.shadowColor = "cyan"; }
-
-            // Always draw using base size (before rotation), centered on footprint center
-            const baseW = m.type.size.width;
-            const baseH = m.type.size.height;
-
-            ctx.drawImage(img,
-                -(baseW * SPACE_WIDTH) / 2,
-                -(baseH * SPACE_HEIGHT) / 2,
-                SPACE_WIDTH * baseW,
-                SPACE_HEIGHT * baseH);
-            ctx.restore();
-        }
-    });
-
-    // 5. DRAW THE GHOST BRUSH (Cursor)
+    // Draw ghost brush cursor on top
     if (selectedBrush && selectedBrush.type) {
         const { w, h, rot, type } = selectedBrush;
-
         const actualW = (rot === 90 || rot === 270) ? h : w;
         const actualH = (rot === 90 || rot === 270) ? w : h;
-
         ctx.fillStyle = type === 'room' ? 'rgba(178, 34, 34, 0.5)' : 'rgba(255, 255, 255, 0.5)';
-        ctx.strokeStyle = "#00ffff"; // Bright cyan border
+        ctx.strokeStyle = "#00ffff";
         ctx.lineWidth = 2;
-
         const gx = mousePos.x * SPACE_WIDTH;
         const gy = mousePos.y * SPACE_HEIGHT;
-        const gw = actualW * SPACE_WIDTH;
-        const gh = actualH * SPACE_HEIGHT;
-
-        ctx.fillRect(gx, gy, gw, gh);
-        ctx.strokeRect(gx, gy, gw, gh);
-
-        // Draw rotation text
+        ctx.fillRect(gx, gy, actualW * SPACE_WIDTH, actualH * SPACE_HEIGHT);
+        ctx.strokeRect(gx, gy, actualW * SPACE_WIDTH, actualH * SPACE_HEIGHT);
         ctx.fillStyle = "white";
         ctx.font = "bold 12px Arial";
         ctx.textAlign = "left";
@@ -5710,27 +5530,49 @@ function toggleCommunity() {
             const list = document.getElementById('communityList');
             list.innerHTML = '';
 
-            quests.forEach(q => {
-                const tagsHtml = q.tags ? '<div style="font-size:10px; color:#888; margin-top:2px;">' + q.tags + '</div>' : '';
+quests.forEach(q => {
+                const tagsHtml = q.tags
+                    ? `<div style="font-size:10px;color:#888;margin-top:2px;">${q.tags}</div>`
+                    : '';
                 const item = document.createElement('div');
-                item.className = 'vault-item';
-                item.style.cssText = 'cursor:pointer; position:relative; padding-right:30px;';
-                item.onclick = () => selectCommunityQuest(q.id);
+                item.style.cssText = 'border-bottom:1px solid #eee; padding:10px; transition:background 0.15s;';
+                item.onmouseover = () => item.style.background = '#f5f0ff';
+                item.onmouseout  = () => item.style.background = '';
 
-                // Check if current user owns this quest
                 const isOwner = currentUser && q.authorId === currentUser.uid;
-                const deleteBtn = isOwner ?
-                    '<span onclick="event.stopPropagation(); deleteQuest(\'' + q.id + '\')" ' +
-                    'style="position:absolute; right:5px; top:50%; transform:translateY(-50%); ' +
-                    'color:red; font-weight:bold; font-size:18px; cursor:pointer; padding:5px;" ' +
-                    'title="Delete Quest">&times;</span>' : '';
+                const rating = parseFloat(q.rating || 0).toFixed(1);
 
-                item.innerHTML = '<div style="width:100%;">' +
-                    '<strong style="color:#673ab7;">' + q.name + '</strong>' +
-                    '<div style="font-size:11px; color:#555;">by ' + (q.authorName || 'Unknown') + '</div>' +
-                    '<div style="font-size:10px; color:#fbc02d;">★ ' + (q.rating || '0.0') + ' (' + (q.ratingCount || 0) + ')</div>' +
-                    tagsHtml +
-                    '</div>' + deleteBtn;
+                item.innerHTML = `
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <div style="flex:1;min-width:0;cursor:pointer;"
+                             onclick="selectCommunityQuest('${q.id}')">
+                            <strong style="color:#673ab7;display:block;overflow:hidden;
+                                text-overflow:ellipsis;white-space:nowrap;font-size:13px;">
+                                ${q.name}
+                            </strong>
+                            <div style="font-size:11px;color:#555;margin-top:1px;">
+                                by ${q.authorName || 'Unknown'}
+                            </div>
+                            <div style="font-size:10px;color:#fbc02d;margin-top:1px;">
+                                ★ ${rating} (${q.ratingCount || 0})
+                            </div>
+                            ${tagsHtml}
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+                            <button onclick="event.stopPropagation(); importQuestDirectly('${q.id}')"
+                                style="background:#4CAF50;color:white;border:none;padding:8px 12px;
+                                       cursor:pointer;border-radius:5px;font-size:12px;font-weight:bold;
+                                       white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);"
+                                title="Import this quest to your board">
+                                ⬇ Import
+                            </button>
+                            ${isOwner ? `<button onclick="event.stopPropagation(); deleteQuest('${q.id}')"
+                                style="background:#f44336;color:white;border:none;padding:5px 10px;
+                                       cursor:pointer;border-radius:5px;font-size:11px;font-weight:bold;">
+                                🗑 Delete
+                            </button>` : ''}
+                        </div>
+                    </div>`;
 
                 list.appendChild(item);
             });
@@ -6138,7 +5980,17 @@ function toggleCommunity() {
             if (!selectedQuestData || !selectedQuestData.data) return;
             loadQuestData(selectedQuestData.data);
             toggleCommunity();
-            // alert("Quest Loaded!");
+        }
+
+        function importQuestDirectly(qid) {
+            const q = communityCache.find(x => x.id === qid);
+            if (!q || !q.data) {
+                showCustomAlert("Quest data not found. Try refreshing the Community Vault.", "Error");
+                return;
+            }
+            loadQuestData(q.data);
+            toggleCommunity();
+            showCustomAlert(`"${q.name}" imported successfully!`, "Quest Imported");
         }
 
         // 4. SHARE LOGIC
@@ -6323,10 +6175,21 @@ function loadQuestData(data) {
     
     useCustomLayout = data.useCustomLayout;
 
-    // Rebuild room spaces
+    // Rebuild room spaces from the restored grid (handles non-rectangular rooms)
     activeRooms.forEach(r => {
-        if (!r.spaces && r.width && r.height) {
-            r.spaces = [];
+        r.spaces = [];
+        const rId = String(r.roomNumber);
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                const cell = grid[y][x];
+                if (cell.active && cell.type === 'room' &&
+                        String(cell.roomInstanceId) === rId) {
+                    r.spaces.push({ x, y });
+                }
+            }
+        }
+        // Fallback for old save format without roomInstanceId
+        if (r.spaces.length === 0 && r.width && r.height) {
             for (let i = 0; i < r.width; i++) {
                 for (let j = 0; j < r.height; j++) {
                     r.spaces.push({ x: r.x + i, y: r.y + j });
